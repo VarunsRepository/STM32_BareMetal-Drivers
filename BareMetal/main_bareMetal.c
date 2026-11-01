@@ -1,6 +1,21 @@
 #include <stdint.h>
 
-/* ---- Where the hardware lives in memory ---- */
+/*
+How a PLL works
+8 MHz crystal  ──┐
+                 ├─ compare at 1 MHz ──→ VCO ──→ 336 MHz
+       ÷336 ─────┘                               │
+         ↑                                       │
+         └───────────────────────────────────────┘
+
+         ÷M = 8 brings the 8 MHz input to 1 MHz, where the comparator works best
+         ÷N = 336 in the feedback forces the VCO to 336 MHz to keep matching
+         ÷P = 4 gives 84 MHz for the core
+         ÷Q = 7 gives 48 MHz for USB, from the same VCO
+
+*/
+   
+/* ---- Where the hardware lives in memory ---- 
 
 /* RCC = Reset and Clock Control. Switches power/clocks on and off
    for every peripheral. Nothing works until its clock is on. */
