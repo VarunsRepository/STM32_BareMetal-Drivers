@@ -14,7 +14,33 @@ How a PLL works
          ÷Q = 7 gives 48 MHz for USB, from the same VCO
 
 */
-   
+
+
+/*
+Clock Tree Configuration
+a. we'd b needign this so as we can hammer the CPU at 84 MHz(peak clock freq of OUR STM32 Board{some higher spec boards cna hammer almost at 400 MHz}) 
+b. TO ensure that we're hooking up right busses and respectign their speeds, 
+c. Stable Samplin rate for teh ADC to read an input that actually makes sense)
+
+SOURCES                PLL                        PRESCALERS
+
+HSI 16MHz ─┐                             ┌─ AHB  ÷1 → 84 MHz  core, GPIO
+           │                             │
+HSE  8MHz ─┴→ ÷M ─→ ×N ─→ ÷P → SYSCLK ───┼─ APB1 ÷2 → 42 MHz  TIM2, USART2
+     ↑        ↑     ↑     ↑        ↑     │
+     │        │     │     │        │     └─ APB2 ÷1 → 84 MHz  ADC1
+  step 2   ── step 3 ──         step 5         ↑
+                                            step 4
+Code line	What it does in the tree
+FLASH_ACR |= 2	Not in the tree — prepares flash to survive what’s coming
+RCC_CR |= HSE_ON	Picks the source: switches on the 8 MHz input
+RCC_PLLCFGR = M | N | P	Sets the three PLL dividers — the M, N, P from the diagram
+RCC_CR |= PLL_ON	Starts the loop; the while waits for it to lock at 336 MHz
+RCC_CFGR |= APB1_DIV2	Sets the bus prescalers — the ÷1, ÷2, ÷1 on the right
+RCC_CFGR |= SYSCLK_FROM_PLL	Flips the mux feeding SYSCLK from HSI to PLL output
+
+*/
+
 /* ---- Where the hardware lives in memory ---- 
 
 /* RCC = Reset and Clock Control. Switches power/clocks on and off
