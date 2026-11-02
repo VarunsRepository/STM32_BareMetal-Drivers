@@ -12,10 +12,13 @@
 /* ---- The registers inside a GPIO port ---- */
 
 #define GPIO_MODE      0x00   /* what each pin IS: input/output/alternate/analog */
+#define GPIO_SPEED     0x08   /* how fast the output driver slews */
 #define GPIO_PULL      0x0C   /* internal pull-up or pull-down resistor */
 #define GPIO_INPUT     0x10   /* read the live level of every pin */
 #define GPIO_OUTPUT    0x14   /* the level each output pin is driving */
 #define GPIO_SET_RESET 0x18   /* atomic set/clear - see gpio_high() below */
+#define GPIO_ALT_LOW   0x20   /* which peripheral owns pins 0-7  */
+#define GPIO_ALT_HIGH  0x24   /* which peripheral owns pins 8-15 */
 
 
 /* ---- What a pin can be ----
@@ -29,6 +32,28 @@
 #define PULL_NONE  0U
 #define PULL_UP    1U
 #define PULL_DOWN  2U
+
+#define SPEED_LOW     0U
+#define SPEED_MEDIUM  1U
+#define SPEED_HIGH    2U
+#define SPEED_VHIGH   3U
+
+
+/* ---- Alternate function numbers ----
+
+   PIN_AS_ALTERNATE says "a peripheral drives this pin", but not
+   WHICH peripheral - most pins can be claimed by several, and the
+   number below picks one. The full mapping is a table in the
+   datasheet (not the reference manual), one row per pin.
+
+   Getting this wrong is quiet: the pin is handed to the wrong
+   peripheral, so nothing comes out and nothing complains. */
+
+#define AF_USART1  7U
+#define AF_USART2  7U   /* PA2 = TX, PA3 = RX */
+#define AF_TIM2    1U
+#define AF_SPI1    5U
+#define AF_I2C1    4U
 
 
 /* Sets what a pin is. Clears both mode bits first, then sets the
@@ -46,6 +71,30 @@ static inline void gpio_pull(uint32_t port, uint32_t pin, uint32_t pull)
 {
     REG(port, GPIO_PULL) &= ~(3U << (pin * 2));
     REG(port, GPIO_PULL) |=  (pull << (pin * 2));
+}
+
+static inline void gpio_speed(uint32_t port, uint32_t pin, uint32_t speed)
+{
+    REG(port, GPIO_SPEED) &= ~(3U << (pin * 2));
+    REG(port, GPIO_SPEED) |=  (speed << (pin * 2));
+}
+
+
+/* Hands a pin over to a peripheral, in one call: sets the mode to
+   ALTERNATE and says which peripheral gets it.
+
+   Note the FOUR bits per pin here, not two - sixteen possible
+   peripherals per pin. That is why it takes two registers to cover
+   sixteen pins, split at pin 8. */
+static inline void gpio_alternate(uint32_t port, uint32_t pin, uint32_t af)
+{
+    uint32_t reg   = (pin < 8) ? GPIO_ALT_LOW : GPIO_ALT_HIGH;
+    uint32_t shift = (pin % 8) * 4;
+
+    REG(port, reg) &= ~(0xFU << shift);
+    REG(port, reg) |=  (af   << shift);
+
+    gpio_mode(port, pin, PIN_AS_ALTERNATE);
 }
 
 
